@@ -1,0 +1,7 @@
+{
+    "organization": "onsynk",
+    "skill": "gitsynk",
+    "version": "1.0.0",
+    "description": "Universal, language-agnostic autonomous engineering workflow integrating with Git and GitHub CLI (gh)",
+    "license": "MIT"
+}
