@@ -1,6 +1,12 @@
-# GitSynk Plan Format Specification (`plan.txt`)
+# GitSynk Plan Format Specification (`.onsynk/gitsynk/plans/*.text`)
 
-The `plan.txt` file defines the structured output generated during **Track 1: Universal Technical Audit & Planning**. It serves as both a human-readable engineering roadmap and a machine-parseable source of truth for the bulk GitHub issue creation engine (`scripts/parse_plan.sh`).
+The plan file defines the structured output generated during **Track 1: Universal Technical Audit & Planning**. It is saved as a plain text file at:
+```
+.onsynk/gitsynk/plans/*.text
+```
+(e.g., `.onsynk/gitsynk/plans/plan.text`, `.onsynk/gitsynk/plans/audit.text`, or `.onsynk/gitsynk/plans/auth-refactor.text`).
+
+It serves as both a human-readable engineering roadmap and a machine-parseable source of truth for the bulk GitHub issue creation engine (`scripts/parse_plan.sh`).
 
 ---
 
@@ -53,7 +59,7 @@ Each task block is delineated by a `### [TASK-XX]` heading, followed by metadata
 
 ---
 
-## 4. Full Example `plan.txt`
+## 4. Full Example (`.onsynk/gitsynk/plans/plan.text`)
 
 ```markdown
 # GitSynk Technical Audit & Implementation Plan

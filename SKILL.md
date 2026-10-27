@@ -3,9 +3,9 @@ name: gitsynk
 description: >-
   Universal, language-agnostic autonomous engineering workflow integrating with Git and GitHub CLI (`gh`).
   Use this skill to audit codebases across any tech stack (PHP, Node/TS, Python, Rust, Go, Flutter, Java, C#, Ruby),
-  generate structured development plans (`plan.txt`), bulk-create categorized GitHub issues with priority badges,
-  ingest task IDs, switch to dedicated feature/fix branches, auto-detect and run linters/tests, and automate
-  conventional commits and Pull Requests.
+  generate structured development plans as text at `.onsynk/gitsynk/plans/*.text`, bulk-create categorized GitHub
+  issues with priority badges, ingest task IDs, switch to dedicated feature/fix branches, auto-detect and run
+  linters/tests, and automate conventional commits and Pull Requests.
 ---
 
 # GitSynk: Universal Autonomous Engineering Workflow
@@ -16,7 +16,7 @@ description: >-
 flowchart TD
     subgraph Track1 ["Track 1: Audit, Planning & Issues"]
         A[Target Codebase / Directory] --> B[Evaluate 4 Pillars of Audit]
-        B --> C[Generate plan.txt]
+        B --> C["Generate Plan at .onsynk/gitsynk/plans/*.text"]
         C --> D[scripts/parse_plan.sh]
         D --> E[Bulk Create GitHub Issues via gh]
     end
@@ -41,7 +41,7 @@ flowchart TD
 
 - [Track 1: Universal Technical Audit & GitHub Issues](#track-1-universal-technical-audit-plan-generation--github-issues)
   - [The 4 Core Pillars](#1-the-4-core-pillars-of-technical-audit)
-  - [Generating `plan.txt`](#2-generating-plantxt)
+  - [Generating Plans in `.onsynk/gitsynk/plans/*.text`](#2-generating-plans-as-text-at-onsynkgitsynkplanstext)
   - [Bulk Issue Creation](#3-automated-github-issue-creation)
 - [Track 2: Task Implementation & PR Automation](#track-2-task-implementation-auto-detection--gitpr-automation)
   - [Context Ingestion & Branching](#1-context-ingestion--branch-management)
@@ -67,9 +67,19 @@ Every audit must systematically evaluate the target against these 4 pillars:
 | **3. Security & Concurrency** | Injection flaws (SQL, Command, XSS), broken authorization/authentication, secret leakage, race conditions, unsynchronized shared mutable state, deadlocks. | Raw SQL string interpolation, missing CSRF token, unsynchronized map access across goroutines, unmasked API key in code. |
 | **4. Architecture & Code Quality** | SOLID principles, single responsibility, leaking domain boundaries, tight coupling, code duplication (DRY), high cyclomatic complexity, lack of test coverage. | 1,000-line controller, domain model directly issuing HTTP calls, repetitive boilerplate, untested business calculation. |
 
-### 2. Generating `plan.txt`
+### 2. Generating Plans as Text at `.onsynk/gitsynk/plans/*.text`
 
-Audit findings must be compiled into `plan.txt` in the root workspace using the canonical GitSynk task specification. See [references/plan_format.md](./references/plan_format.md) for full schema.
+All audit findings and development roadmaps must be saved as text files located within the project's `.onsynk/gitsynk/plans/` directory with the `.text` extension (e.g. `.onsynk/gitsynk/plans/plan.text` or `.onsynk/gitsynk/plans/<module-or-date>.text`).
+
+#### Initializing a New Plan File:
+Use the helper script to scaffold a new plan:
+```bash
+bash scripts/create_plan.sh [optional_name]
+# Example: bash scripts/create_plan.sh audit
+# Output: .onsynk/gitsynk/plans/audit.text
+```
+
+See [references/plan_format.md](./references/plan_format.md) for full schema.
 
 #### Standard Block Template:
 ```markdown
@@ -88,16 +98,24 @@ Audit findings must be compiled into `plan.txt` in the root workspace using the 
 
 ### 3. Automated GitHub Issue Creation
 
-Once `plan.txt` is generated, parse and convert items into live GitHub issues.
+Once the `.text` plan file is saved, parse and convert items into live GitHub issues. The parser automatically detects files in `.onsynk/gitsynk/plans/*.text` if no path is explicitly provided.
 
 #### Previewing Parsed Tasks (Dry-Run):
 ```bash
-bash scripts/parse_plan.sh plan.txt --preview
+# Auto-detects latest .onsynk/gitsynk/plans/*.text
+bash scripts/parse_plan.sh --preview
+
+# Or specify a target plan file
+bash scripts/parse_plan.sh .onsynk/gitsynk/plans/audit.text --preview
 ```
 
 #### Bulk Creating Issues:
 ```bash
-bash scripts/parse_plan.sh plan.txt --execute
+# Auto-detects latest .onsynk/gitsynk/plans/*.text
+bash scripts/parse_plan.sh --execute
+
+# Or specify a target plan file
+bash scripts/parse_plan.sh .onsynk/gitsynk/plans/audit.text --execute
 ```
 
 #### Creating a Single Ad-Hoc Issue:
@@ -221,9 +239,10 @@ All scripts reside in the `scripts/` directory:
 
 | Script | Purpose | Key Flags & Usage |
 | :--- | :--- | :--- |
+| `scripts/create_plan.sh` | Scaffold a new plan file at `.onsynk/gitsynk/plans/*.text` | `[plan_name]` |
+| `scripts/parse_plan.sh` | Parse `.onsynk/gitsynk/plans/*.text` and bulk-generate issues | `[path.text] [--preview \| --execute]` |
 | `scripts/fetch_task.sh` | Fetch issue context from GitHub and configure git branch | `<#ID> [--checkout] [--prefix <name>]` |
 | `scripts/create_task.sh` | Create a categorized GitHub issue with badges | `--title <t> --type <type> --priority <p> --body <b>` |
-| `scripts/parse_plan.sh` | Parse `plan.txt` and bulk-generate issues | `[plan.txt] [--preview \| --execute]` |
 | `scripts/detect_quality_tools.sh` | Interrogate project stack and run lint/tests | `[target_dir] [--detect \| --lint \| --test \| --all]` |
 | `scripts/open_pr.sh` | Push branch, open PR, and link to issue | `[--issue <ID>] [--title <t>] [--draft] [--no-comment]` |
 
@@ -242,8 +261,9 @@ stateDiagram-v2
 
     state Track1 {
         AuditTarget --> EvaluatePillars
-        EvaluatePillars --> WritePlanTxt
-        WritePlanTxt --> ParsePlanPreview
+        EvaluatePillars --> InitPlanDir
+        InitPlanDir --> WritePlanText: "Save to .onsynk/gitsynk/plans/*.text"
+        WritePlanText --> ParsePlanPreview
         ParsePlanPreview --> BulkCreateIssues
     }
 
@@ -259,10 +279,11 @@ stateDiagram-v2
 
 ### Scenario A: "Audit this module / directory and create issues"
 1. Perform deep static analysis against the **4 Core Pillars**.
-2. Construct structured `plan.txt`.
-3. Run `bash scripts/parse_plan.sh plan.txt --preview` to confirm valid parsing.
-4. Run `bash scripts/parse_plan.sh plan.txt --execute` to generate GitHub issues.
-5. Provide a summary table of created issues to the user.
+2. Initialize or write to `.onsynk/gitsynk/plans/<name>.text` using `bash scripts/create_plan.sh [name]`.
+3. Fill in structured task blocks (`### [TASK-01]`, etc.).
+4. Run `bash scripts/parse_plan.sh --preview` to confirm valid parsing.
+5. Run `bash scripts/parse_plan.sh --execute` to generate GitHub issues.
+6. Provide a summary table of created issues to the user.
 
 ### Scenario B: "Implement task #54"
 1. Ingest task: `bash scripts/fetch_task.sh #54 --checkout`.

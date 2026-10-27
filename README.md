@@ -15,14 +15,19 @@ GitSynk provides an end-to-end autonomous engineering loop for AI coding agents 
 gitsynk/
 ├── SKILL.md                          # Primary agent skill definition & runbook
 ├── scripts/
+│   ├── create_plan.sh                # Scaffolds plans at .onsynk/gitsynk/plans/*.text
 │   ├── detect_quality_tools.sh       # Multi-language linter & test runner auto-detector
 │   ├── fetch_task.sh                 # Ingests #ID, extracts context & checks out branch
 │   ├── create_task.sh                # Creates categorized issue with priority badges
-│   ├── parse_plan.sh                 # Parses plan.txt and executes bulk issue creation
+│   ├── parse_plan.sh                 # Parses .onsynk/gitsynk/plans/*.text for issues
 │   └── open_pr.sh                    # Pushes branch and opens PR linked to issue
-└── references/
-    ├── plan_format.md                # Specification for plan.txt
-    └── stack_matrix.md               # Supported language & verification matrix
+├── references/
+│   ├── plan_format.md                # Specification for .onsynk/gitsynk/plans/*.text
+│   └── stack_matrix.md               # Supported language & verification matrix
+└── .onsynk/
+    └── gitsynk/
+        └── plans/                    # Target directory for generated plan files
+            └── *.text                # Plain text development plans
 ```
 
 ### 🎯 Track 1: Universal Technical Audit, Plan Generation & GitHub Issues
@@ -32,8 +37,8 @@ gitsynk/
   2. *Performance Bottlenecks*
   3. *Security & Concurrency*
   4. *Architecture & Code Quality*
-- **Plan Generation**: Compiles actionable findings into structured `plan.txt`.
-- **Bulk GitHub Issues**: Automatically parses `plan.txt` and creates issues with type labels (`bug`, `enhancement`) and priority badges (`🚨 High-Top`, `⚡ Medium`, `🌱 Regular`).
+- **Plan Generation**: Compiles actionable findings into structured text files at `.onsynk/gitsynk/plans/*.text`.
+- **Bulk GitHub Issues**: Automatically parses `.onsynk/gitsynk/plans/*.text` and creates issues with type labels (`bug`, `enhancement`) and priority badges (`🚨 High-Top`, `⚡ Medium`, `🌱 Regular`).
 
 ### 🛠️ Track 2: Task Implementation, Auto-Detection & Git/PR Automation
 - **Context & Branching**: Ingests issue `#ID`, extracts specifications via `gh issue view`, and switches to a dedicated `fix/issue-<ID>-<slug>` or `feat/issue-<ID>-<slug>` branch.
@@ -44,13 +49,16 @@ gitsynk/
 
 ## Quick Usage Guide
 
-### 1. Audit & Issue Generation
+### 1. Create Plan & Generate GitHub Issues
 ```bash
-# Preview parsed issues from plan.txt
-bash scripts/parse_plan.sh plan.txt --preview
+# Scaffold a new plan in .onsynk/gitsynk/plans/audit.text
+bash scripts/create_plan.sh audit
+
+# Preview parsed issues (auto-detects .onsynk/gitsynk/plans/*.text)
+bash scripts/parse_plan.sh --preview
 
 # Bulk-create issues in GitHub
-bash scripts/parse_plan.sh plan.txt --execute
+bash scripts/parse_plan.sh --execute
 ```
 
 ### 2. Task Fetching & Branching
@@ -96,4 +104,4 @@ Place directly in `.agents/skills/gitsynk/` inside your target project repositor
 
 ## License
 
-MIT © [OnSynk](https://github.com/onsynk)
+MIT © [OnSynk](https://github.com/)

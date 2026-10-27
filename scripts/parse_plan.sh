@@ -1,27 +1,69 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # parse_plan.sh
-# Ingest and Parse plan.txt to Bulk-Create GitHub Issues
+# Ingest and Parse .onsynk/gitsynk/plans/*.text to Bulk-Create GitHub Issues
 # Part of GitSynk Autonomous Engineering Workflow
 # ==============================================================================
 
 set -euo pipefail
 
-PLAN_FILE="${1:-plan.txt}"
-MODE="${2:---preview}"
+PLAN_FILE=""
+MODE="--preview"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [[ "$PLAN_FILE" == "--help" ]] || [[ "$PLAN_FILE" == "-h" ]]; then
-    echo "Usage: $0 [path_to_plan.txt] [--preview|--execute]"
-    echo ""
-    echo "Modes:"
-    echo "  --preview  (Default) Validate and print parsed tasks without creating GitHub issues."
-    echo "  --execute  Create GitHub issues in bulk using 'gh issue create'."
-    exit 0
+# Parse arguments
+for arg in "$@"; do
+    case "$arg" in
+        --help|-h)
+            echo "Usage: $0 [path_to_plan.text] [--preview|--execute]"
+            echo ""
+            echo "Plans are located at: .onsynk/gitsynk/plans/*.text"
+            echo ""
+            echo "Modes:"
+            echo "  --preview  (Default) Validate and print parsed tasks without creating GitHub issues."
+            echo "  --execute  Create GitHub issues in bulk using 'gh issue create'."
+            exit 0
+            ;;
+        --preview)
+            MODE="--preview"
+            ;;
+        --execute)
+            MODE="--execute"
+            ;;
+        *)
+            if [[ -z "$PLAN_FILE" ]]; then
+                PLAN_FILE="$arg"
+            fi
+            ;;
+    esac
+done
+
+# If no specific plan file was passed, auto-discover in .onsynk/gitsynk/plans/*.text
+if [[ -z "$PLAN_FILE" ]]; then
+    PLANS_DIR=".onsynk/gitsynk/plans"
+    if [[ -d "$PLANS_DIR" ]]; then
+        # Find latest modified .text file in .onsynk/gitsynk/plans/
+        LATEST_PLAN=$(find "$PLANS_DIR" -maxdepth 1 -name "*.text" -o -name "*.txt" 2>/dev/null | head -n 1)
+        if [[ -n "$LATEST_PLAN" ]]; then
+            PLAN_FILE="$LATEST_PLAN"
+        fi
+    fi
+fi
+
+# Fallback check for root files if still empty
+if [[ -z "$PLAN_FILE" ]]; then
+    if [[ -f "plan.text" ]]; then
+        PLAN_FILE="plan.text"
+    elif [[ -f "plan.txt" ]]; then
+        PLAN_FILE="plan.txt"
+    else
+        PLAN_FILE=".onsynk/gitsynk/plans/plan.text"
+    fi
 fi
 
 if [[ ! -f "$PLAN_FILE" ]]; then
     echo "Error: Plan file '$PLAN_FILE' not found." >&2
+    echo "Tip: Run 'bash scripts/create_plan.sh [name]' to create a new plan in .onsynk/gitsynk/plans/*.text" >&2
     exit 1
 fi
 
@@ -30,8 +72,7 @@ echo -e "\033[1;34mGitSynk Plan Parser\033[0m: Reading $PLAN_FILE"
 echo -e "Mode: \033[1;33m$MODE\033[0m"
 echo -e "\033[1;36m============================================================\033[0m"
 
-# Parse structured tasks from plan.txt
-# Supports blocks starting with '### [TASK' or '## Task' or '[TASK]'
+# Parse structured tasks from plan file
 TASK_COUNT=0
 CURRENT_TITLE=""
 CURRENT_TYPE="enhancement"
@@ -56,7 +97,6 @@ process_task() {
     if [[ -n "$CURRENT_TARGET" ]]; then echo -e "  Target:    \033[1;37m$CURRENT_TARGET\033[0m"; fi
     
     if [[ "$MODE" == "--execute" ]]; then
-        # Assemble structured issue body
         FULL_BODY="## GitSynk Task Summary
 - **Pillar**: ${CURRENT_PILLAR:-Unspecified}
 - **Scope**: ${CURRENT_SCOPE:-General}
@@ -87,7 +127,6 @@ while IFS= read -r line || [[ -n "$line" ]]; do
             process_task
         fi
         IN_TASK=true
-        # Extract title after task marker: e.g. "### [TASK-01] Title" -> "Title"
         CURRENT_TITLE=$(echo "$line" | sed -E 's/^###?[[:space:]]*\[?TASK[^]]*\]?:?[[:space:]]*//')
         CURRENT_TYPE="enhancement"
         CURRENT_PRIORITY="🌱 Regular"
@@ -99,7 +138,6 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     fi
 
     if [[ "$IN_TASK" == true ]]; then
-        # Check metadata keys
         if [[ "$line" =~ ^-[[:space:]]*\*\*Type\*\*:[[:space:]]*(.*) ]]; then
             CURRENT_TYPE="${BASH_REMATCH[1]}"
         elif [[ "$line" =~ ^-[[:space:]]*\*\*Priority\*\*:[[:space:]]*(.*) ]]; then
